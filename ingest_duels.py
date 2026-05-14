@@ -50,7 +50,7 @@ def upload_to_s3(file_path, object_name):
     print(f"Uploaded {object_name} to R2 storage.")
 
 def run_ingestion():
-    prepare_session()
+    # prepare_session()
     if not os.path.exists(DOWNLOAD_DIR):
         os.makedirs(DOWNLOAD_DIR)
 
@@ -66,7 +66,7 @@ def run_ingestion():
         
         # --- NEW: INJECT AUTH COOKIE ---
         token = os.getenv("DISCORD_SESSION_TOKEN")
-        if token and is_github:
+        if token:
             print("Injecting session token...")
             context.add_cookies([{
                 'name': '__Secure-next-auth.session-token',
@@ -80,15 +80,22 @@ def run_ingestion():
 
         page = context.new_page()
         # Increase timeout to 60 seconds and wait for the basic page load
-        page.goto("https://duels.ink/account", wait_until="domcontentloaded", timeout=60000)
+        print("Navigating to Duels...")
+        page.goto("https://duels.ink", wait_until="domcontentloaded")
+
+        page.goto("https://duels.ink/account", wait_until="networkidle")
 
         # Debugging: Take a screenshot if it fails so you can see what the bot sees
         try:
-            page.wait_for_selector('text=Export Game History', timeout=15000)
-        except:
-            print("Export button not found. Taking debug screenshot...")
+            print("Searching for Export button...")
+            # We look for the button specifically
+            page.wait_for_selector('button:has-text("Export Game History")', timeout=20000)
+            print("Login successful! Button found.")
+        except Exception:
+            print("FAILED: Export button not found. Checking if 'Sign In' is present...")
+            if page.is_visible('text=Sign In'):
+                print("Bot is stuck on the Login page. Cookie injection failed.")
             page.screenshot(path="debug_screen.png")
-            # This screenshot will be available in GitHub Action "Artifacts" if it fails
             raise
 
         # Manually wait for the specific button we need
