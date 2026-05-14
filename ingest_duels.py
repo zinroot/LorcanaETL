@@ -58,14 +58,19 @@ def run_ingestion():
         os.makedirs(os.path.join(DOWNLOAD_DIR, folder), exist_ok=True)
 
     with sync_playwright() as p:
-        # Launch browser with a real-world User Agent to avoid bot detection
+        # Launch browser
         context = p.chromium.launch_persistent_context(
             os.path.join(BASE_DIR, "playwright_session"),
-            headless=False,
+            headless=True if IS_GITHUB else False, # Force True on GitHub
             accept_downloads=True,
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            # Add these flags to help it run in a "screenless" environment
+            args=[
+                "--disable-gpu",
+                "--no-sandbox",
+                "--disable-dev-shm-usage"
+            ]
         )
-        
         # 2. BRUTE FORCE COOKIE INJECTION
         token = os.getenv("DISCORD_SESSION_TOKEN")
         if token:
