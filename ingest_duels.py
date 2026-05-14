@@ -36,7 +36,22 @@ def upload_to_s3(file_path, object_name):
     s3.upload_file(file_path, BUCKET_NAME, object_name)
     print(f"Successfully uploaded to: {object_name}")
 
+def prepare_session():
+    # Only unzip if we are in GitHub and the session folder doesn't exist yet
+    if IS_GITHUB and os.path.exists("session.zip"):
+        print("Extracting session.zip for Cloud environment...")
+        # Path where Playwright expects the profile
+        target_dir = os.path.join(BASE_DIR, "playwright_session")
+        
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir)
+            
+        with zipfile.ZipFile("session.zip", 'r') as z:
+            z.extractall(target_dir)
+        print("Session extraction complete.")
+
 def run_ingestion():
+    prepare_session()
     # 1. Create Local Subfolders
     subfolders = ["game-history", "game-logs", "game-replays"]
     for folder in subfolders:
@@ -46,7 +61,7 @@ def run_ingestion():
         # Launch browser with a real-world User Agent to avoid bot detection
         context = p.chromium.launch_persistent_context(
             os.path.join(BASE_DIR, "playwright_session"),
-            headless=IS_GITHUB,
+            headless=False,
             accept_downloads=True,
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         )
