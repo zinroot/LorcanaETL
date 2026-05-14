@@ -15,7 +15,7 @@ DOWNLOAD_DIR = os.path.join(BASE_DIR, "data", "raw")
 load_dotenv()
 
 # Date configuration
-TEST_DATE = "2026-05-12" 
+YESTERDAY = "2026-05-12" 
 YESTERDAY = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 
 # Paths
@@ -59,20 +59,26 @@ def run_ingestion():
         context = p.chromium.launch_persistent_context(
             USER_DATA_DIR,
             headless=is_github,
-            accept_downloads=True
+            accept_downloads=True,
+            # This makes the GitHub runner look like a standard Windows Chrome user
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         )
         
         page = context.new_page()
-        page.goto("https://duels.ink/account", wait_until="networkidle")
+        # Increase timeout to 60 seconds and wait for the basic page load
+        page.goto("https://duels.ink/account", wait_until="domcontentloaded", timeout=60000)
 
+        # Manually wait for the specific button we need
+        print("Waiting for the Export button to appear...")
+        page.wait_for_selector('role=button[name="Export Game History"]', timeout=30000)
         # 1. Open Export Modal
         page.get_by_role("button", name="Export Game History").click()
         page.wait_for_selector("text=Export Logs") 
 
         # 2. Set Dates
         date_inputs = page.locator('input[type="date"]')
-        date_inputs.first.fill(TEST_DATE)
-        date_inputs.last.fill(TEST_DATE)
+        date_inputs.first.fill(YESTERDAY)
+        date_inputs.last.fill(YESTERDAY)
 
         # 3. Selections
         page.get_by_label("Matchmaking", exact=True).check()
@@ -115,14 +121,14 @@ def run_ingestion():
                 
                 if base_name == "game-history":
                     # Download the zip, extract the CSV, name it game-history-DATE.csv
-                    temp_zip = os.path.join(DOWNLOAD_DIR, f"game-history-{TEST_DATE}.csv")
+                    temp_zip = os.path.join(DOWNLOAD_DIR, f"game-history-{YESTERDAY}.csv")
                     download.save_as(temp_zip)
-                    upload_to_s3(save_path, f"game-history-{TEST_DATE}")
-                    print(f"Saved: {base_name}-{TEST_DATE}.csv")
+                    upload_to_s3(save_path, f"game-history-{YESTERDAY}")
+                    print(f"Saved: {base_name}-{YESTERDAY}.csv")
                 
                 else:
                     # Save logs and replays as game-type-DATE.zip
-                    final_filename = f"{base_name}-{TEST_DATE}.zip"
+                    final_filename = f"{base_name}-{YESTERDAY}.zip"
                     save_path = os.path.join(DOWNLOAD_DIR, final_filename)
                     if os.path.exists(save_path): os.remove(save_path)
                     download.save_as(save_path)
