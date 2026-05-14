@@ -27,5 +27,13 @@ jobs:
           S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
           S3_KEY: ${{ secrets.S3_KEY }}
           S3_SECRET: ${{ secrets.S3_SECRET }}
+          DISCORD_SESSION_TOKEN: ${{ secrets.DISCORD_SESSION_TOKEN }} # Add this!
           GITHUB_ACTIONS: "true"
         run: python ingest_duels.py
+
+      - name: Upload Debug Screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-screenshot
+          path: debug_screen.png
