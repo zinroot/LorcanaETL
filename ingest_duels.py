@@ -64,9 +64,32 @@ def run_ingestion():
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         )
         
+        # --- NEW: INJECT AUTH COOKIE ---
+        token = os.getenv("DISCORD_SESSION_TOKEN")
+        if token and is_github:
+            print("Injecting session token...")
+            context.add_cookies([{
+                'name': '__Secure-next-auth.session-token',
+                'value': token,
+                'domain': 'duels.ink',
+                'path': '/',
+                'secure': True,
+                'httpOnly': True,
+                'sameSite': 'Lax'
+            }])
+
         page = context.new_page()
         # Increase timeout to 60 seconds and wait for the basic page load
         page.goto("https://duels.ink/account", wait_until="domcontentloaded", timeout=60000)
+
+        # Debugging: Take a screenshot if it fails so you can see what the bot sees
+        try:
+            page.wait_for_selector('text=Export Game History', timeout=15000)
+        except:
+            print("Export button not found. Taking debug screenshot...")
+            page.screenshot(path="debug_screen.png")
+            # This screenshot will be available in GitHub Action "Artifacts" if it fails
+            raise
 
         # Manually wait for the specific button we need
         print("Waiting for the Export button to appear...")
