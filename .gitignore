@@ -1,0 +1,4 @@
+playwright_session/
+data/
+.env
+__pycache__/

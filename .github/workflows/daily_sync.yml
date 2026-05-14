@@ -1,0 +1,31 @@
+name: Lorcana Daily ETL Ingest
+
+on:
+  schedule:
+    - cron: '0 7 * * *'  # Runs daily at 10:00 UTC (Adjust to your preference)
+  workflow_dispatch:      # Allows you to click a "Run" button manually
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          pip install playwright boto3 python-dotenv
+          python -m playwright install chromium
+
+      - name: Run Script
+        env:
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_KEY: ${{ secrets.S3_KEY }}
+          S3_SECRET: ${{ secrets.S3_SECRET }}
+          GITHUB_ACTIONS: "true"
+        run: python ingest_duels.py
